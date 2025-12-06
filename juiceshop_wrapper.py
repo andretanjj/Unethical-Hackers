@@ -31,6 +31,7 @@ class JuiceShopAPI:
             # Structure: key is unique name, value is dict of details
             status_map[challenge.get("name")] = {
                 "id": challenge.get("id"),
+                "key": challenge.get("key"),  # Needed for mapping to hints.json
                 "name": challenge.get("name"),
                 "description": challenge.get("description"),
                 "difficulty": challenge.get("difficulty"),
