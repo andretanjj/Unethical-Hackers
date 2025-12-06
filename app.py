@@ -1,9 +1,25 @@
 import streamlit as st
 import pandas as pd
+import json
+from pathlib import Path
 from juiceshop_wrapper import JuiceShopAPI
 
 # Initialize API
 api = JuiceShopAPI()
+
+HINTS_PATH = Path("data/hints.json")
+
+@st.cache_data
+def load_hints():
+    if not HINTS_PATH.exists():
+        return {}
+    try:
+        return json.loads(HINTS_PATH.read_text())
+    except json.JSONDecodeError:
+        st.error("Error reading data/hints.json")
+        return {}
+
+hints = load_hints()
 
 st.set_page_config(
     page_title="Juice Shop Companion",
@@ -94,34 +110,56 @@ else:
             # Companion / Hints Section
             st.markdown("---")
             st.subheader("🤖 Companion Guide")
-            
-            # Educational Content (Category-based)
-            educational_tips = {
-                "Injection": "💉 **Injection Attacks**: strict input validation is key. Try entering unexpected characters like `'`, `OR 1=1`, or `<script>` tags in input fields.",
-                "XSS (Cross Site Scripting)": "🌐 **XSS**: Can you make the browser execute your JavaScript? Try payloads like `<script>alert(1)</script>` in comments or search bars.",
-                "Broken Access Control": "🚪 **Broken Access Control**: Are you able to access pages you shouldn't? Try manipulating URLs or ID parameters.",
-                "Sensitive Data Exposure": "🕵️ **Sensitive Data**: Look for information that shouldn't be public. Check network requests, source code, or backup files.",
-                "Security Misconfiguration": "⚙️ **Misconfiguration**: Default credentials? Debug features left on? Publicly accessible config files?",
-                "Cryptographic Issues": "🔐 **Crypto**: Look for weak encryption algorithms (MD5, base64) or secrets hardcoded in the frontend.",
-            }
-            
-            # Show specific tip if available, otherwise generic
-            category_tip = educational_tips.get(challenge['category'])
-            if category_tip:
-                 st.info(category_tip)
-            else:
-                 st.info(f"🔍 **Tip**: Focus on the concepts related to **{challenge['category']}**. Research common vulnerabilities in this area.")
 
-            # Simulated Progressive Hints (In a real app, this could be more complex)
-            if st.button("Need a specific nudge?", key=f"nudge_{challenge['id']}"):
-                if challenge['hint']:
-                    st.markdown(f"**Juice Shop Hint:** {challenge['hint']}")
-                else:
-                    st.markdown("No specific hint available from Juice Shop.")
+            # Check for structured hints first
+            ch_key = challenge.get("key")
+            ch_hints = hints.get(ch_key)
+
+            if ch_hints:
+                st.write(f"**Learning Goal:** {ch_hints.get('learning_goal', 'No specific goal defined.')}")
                 
-            if challenge['hintUrl']:
-                 st.markdown(f"[Official Documentation]({challenge['hintUrl']})")
-                 
-            # Custom educational content could go here
-            st.markdown("> *Try understanding the underlying mechanism before jumping to the solution.*")
+                hint_list = ch_hints.get("hints", [])
+                max_level = len(hint_list)
+                
+                # Slider for progressive disclosure
+                level = st.slider(
+                    "Hint Level", 
+                    min_value=0, 
+                    max_value=max_level,
+                    value=0, 
+                    key=f"slider_{challenge['id']}",
+                    help="0 = no hint, higher = more guidance"
+                )
+                
+                if level > 0:
+                    for i in range(level):
+                        st.markdown(f"**Hint {i+1}:** {hint_list[i]}")
+            else:
+                # Fallback to Category Tips if no specific hints
+                educational_tips = {
+                    "Injection": "💉 **Injection Attacks**: strict input validation is key. Try entering unexpected characters like `'`, `OR 1=1`, or `<script>` tags in input fields.",
+                    "XSS (Cross Site Scripting)": "🌐 **XSS**: Can you make the browser execute your JavaScript? Try payloads like `<script>alert(1)</script>` in comments or search bars.",
+                    "Broken Access Control": "🚪 **Broken Access Control**: Are you able to access pages you shouldn't? Try manipulating URLs or ID parameters.",
+                    "Sensitive Data Exposure": "🕵️ **Sensitive Data**: Look for information that shouldn't be public. Check network requests, source code, or backup files.",
+                    "Security Misconfiguration": "⚙️ **Misconfiguration**: Default credentials? Debug features left on? Publicly accessible config files?",
+                    "Cryptographic Issues": "🔐 **Crypto**: Looking for weak encryption algorithms (MD5, base64) or secrets hardcoded in the frontend.",
+                }
+                
+                category_tip = educational_tips.get(challenge['category'])
+                if category_tip:
+                     st.info(category_tip)
+                else:
+                     st.info(f"🔍 **Tip**: Focus on the concepts related to **{challenge['category']}**. Research common vulnerabilities in this area.")
+                
+                st.markdown("> *No specific hints available for this challenge yet. Add them to `data/hints.json`!* 🚧")
+
+            # Official hints toggler (Secondary)
+            with st.expander("Show Official Juice Shop Hints (if any)"):
+                if challenge['hint']:
+                    st.markdown(f"**Official Hint:** {challenge['hint']}")
+                else:
+                    st.markdown("No official hint text.")
+                
+                if challenge['hintUrl']:
+                     st.markdown(f"[Official Documentation]({challenge['hintUrl']})")
 
