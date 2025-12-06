@@ -104,30 +104,41 @@
         });
 
         // Draggable Logic
-        const header = document.getElementById('js-overlay-header');
+        const overlayElement = document.getElementById('js-overlay'); // Renamed to avoid conflict with 'overlay' variable
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
-        header.addEventListener('mousedown', (e) => {
+        overlayElement.addEventListener('mousedown', (e) => {
             // Only left click
             if (e.button !== 0) return;
+
+            // Don't drag if clicking on interactive elements
+            if (['SELECT', 'BUTTON', 'TEXTAREA', 'INPUT'].includes(e.target.tagName)) {
+                return;
+            }
+
+            // Don't drag if clicking the resize handle (approx bottom-right 20px)
+            const bounds = overlayElement.getBoundingClientRect();
+            if (e.clientX > bounds.right - 20 && e.clientY > bounds.bottom - 20) {
+                return; // Let native resize handle it
+            }
 
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
 
             // Get current computed position
-            const rect = overlay.getBoundingClientRect();
-            initialLeft = rect.left;
-            initialTop = rect.top;
+            // We can reuse 'bounds' here as it represents current state
+            initialLeft = bounds.left;
+            initialTop = bounds.top;
 
             // Ensure we are positioning by left/top now, clearing right if set
-            overlay.style.right = 'auto';
-            overlay.style.left = `${initialLeft}px`;
-            overlay.style.top = `${initialTop}px`;
+            overlayElement.style.right = 'auto';
+            overlayElement.style.left = `${initialLeft}px`;
+            overlayElement.style.top = `${initialTop}px`;
 
             // Optional: visual feedback
-            overlay.style.transition = 'none'; // Disable transition during drag
+            overlayElement.style.transition = 'none'; // Disable transition during drag
         });
 
         document.addEventListener('mousemove', (e) => {

@@ -12,6 +12,18 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    cursor: move;
+    /* Draggable everywhere */
+    user-select: none;
+
+    /* Resizable logic */
+    resize: both;
+    overflow: hidden;
+    /* Required for resize to work */
+    min-width: 250px;
+    min-height: 200px;
+    max-width: 800px;
+    max-height: 100vh;
 }
 
 #js-overlay-header {
@@ -21,10 +33,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: move;
-    /* Indicates draggable */
-    user-select: none;
-    /* Prevent text selection while dragging */
 }
 
 #js-overlay-body {
@@ -32,6 +40,8 @@
     overflow-y: auto;
     flex: 1;
     font-size: 12px;
+    cursor: default;
+    /* Reset cursor for body content */
 }
 
 #js-overlay select,
@@ -41,6 +51,8 @@
     margin: 4px 0;
     font-size: 12px;
     box-sizing: border-box;
+    cursor: auto;
+    /* Standard cursor for inputs */
 }
 
 #js-overlay textarea {
