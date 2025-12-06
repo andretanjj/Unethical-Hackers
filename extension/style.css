@@ -1,0 +1,53 @@
+#js-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100vh;
+    background: rgba(10, 10, 15, 0.95);
+    color: #f5f5f5;
+    z-index: 99999;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    border-left: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+#js-overlay-header {
+    padding: 8px 12px;
+    font-weight: 600;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    /* Indicates draggable */
+    user-select: none;
+    /* Prevent text selection while dragging */
+}
+
+#js-overlay-body {
+    padding: 8px 12px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 12px;
+}
+
+#js-overlay select,
+#js-overlay button,
+#js-overlay textarea {
+    width: 100%;
+    margin: 4px 0;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+#js-overlay textarea {
+    min-height: 80px;
+}
+
+#js-overlay small {
+    font-size: 10px;
+    opacity: 0.7;
+}
