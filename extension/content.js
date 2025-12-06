@@ -35,12 +35,17 @@
         try {
             const raw = localStorage.getItem(STATE_KEY);
             if (!raw) {
-                return { mode: 'Beginner', challengeState: {} };
+                return { mode: 'Beginner', competencySelected: false, challengeState: {} };
             }
-            return JSON.parse(raw);
+            const s = JSON.parse(raw);
+            // Backwards compatibility for v1 types
+            if (typeof s.competencySelected === 'undefined') s.competencySelected = false;
+            // Backwards compatibility for minimized state
+            if (typeof s.minimized === 'undefined') s.minimized = false;
+            return s;
         } catch (e) {
             console.error('Failed to load state', e);
-            return { mode: 'Beginner', challengeState: {} };
+            return { mode: 'Beginner', competencySelected: false, minimized: false, challengeState: {} };
         }
     }
 
@@ -65,10 +70,19 @@
     // ---------- HINT LIMIT PER MODE ----------
 
     function maxHintLevelForMode(mode, numHints) {
+        // "Beginner should allow more hints, Explorer lesser, and Trainer the least."
         if (mode === 'Beginner') {
-            return Math.min(2, numHints); // cap at first 2 hints
+            return numHints; // Show all available hints
         }
-        // Explorer & Trainer: all hints
+        if (mode === 'Explorer') {
+            // Show first 50% of hints or at least 1 (unless 0 total)
+            return Math.ceil(numHints / 2);
+        }
+        if (mode === 'Trainer') {
+            // Least hints (Level 0 Learning Goal is always shown if hints exist)
+            // returning 0 means NO entries from the 'hints' array are shown.
+            return 0;
+        }
         return numHints;
     }
 
@@ -82,13 +96,29 @@
         overlay.innerHTML = `
       <div id="js-overlay-header">
         <span>Juice Shop Coach</span>
-        <button id="js-overlay-toggle" style="width:auto;font-size:10px;">⏵</button>
+        <div style="display:flex; gap:4px;">
+            <button id="js-overlay-min-circle" title="Minimize to icon" style="width:20px; font-size:10px;">_</button>
+            <button id="js-overlay-toggle" style="width:auto;font-size:10px;">⏵</button>
+        </div>
       </div>
       <div id="js-overlay-body">
         <small>Loading challenges...</small>
       </div>
     `;
         document.body.appendChild(overlay);
+
+        // Apply initial minimized state if saved
+        if (state.minimized) {
+            overlay.classList.add('js-minimized');
+        }
+
+        const minBtn = document.getElementById('js-overlay-min-circle');
+        minBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.minimized = true; // Set minimized
+            saveState(state);
+            overlay.classList.add('js-minimized');
+        });
 
         const toggleBtn = document.getElementById('js-overlay-toggle');
         toggleBtn.addEventListener('click', (e) => {
@@ -151,10 +181,21 @@
             overlay.style.top = `${initialTop + dy}px`;
         });
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 isDragging = false;
-                overlay.style.transition = ''; // Re-enable transitions if any were there
+                overlayElement.style.transition = '';
+
+                // If it was a quick click on the minimized circle (not a drag), restore it
+                if (state.minimized) {
+                    // Check if effective drag distance was small
+                    const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+                    if (dist < 5) {
+                        state.minimized = false;
+                        saveState(state);
+                        overlayElement.classList.remove('js-minimized');
+                    }
+                }
             }
         });
     }
@@ -167,31 +208,78 @@
 
         body.innerHTML = '';
 
-        // Mode selector
-        const modeLabel = document.createElement('label');
-        modeLabel.textContent = 'Mode:';
-        body.appendChild(modeLabel);
+        // 1. Competency Selection Screen
+        if (!state.competencySelected) {
+            const h3 = document.createElement('h3');
+            h3.textContent = 'Select Competency';
+            h3.style.marginTop = '0';
+            body.appendChild(h3);
 
-        const modeSelect = document.createElement('select');
-        MODES.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m;
-            if (state.mode === m) opt.selected = true;
-            modeSelect.appendChild(opt);
-        });
-        modeSelect.addEventListener('change', () => {
-            state.mode = modeSelect.value;
-            saveState(state);
-            const select = document.getElementById('js-challenge-select');
-            if (select) renderChallengeSection(select.value);
-        });
-        body.appendChild(modeSelect);
+            const desc = document.createElement('p');
+            desc.textContent = 'How confident are you with web security?';
+            body.appendChild(desc);
+
+            MODES.forEach(m => {
+                const btn = document.createElement('button');
+                btn.style.display = 'block';
+                btn.style.marginBottom = '8px';
+                btn.style.padding = '8px';
+                btn.style.textAlign = 'left';
+
+                let subtext = '';
+                if (m === 'Beginner') subtext = '(Max Hints)';
+                if (m === 'Explorer') subtext = '(Fewer Hints)';
+                if (m === 'Trainer') subtext = '(Minimal/No Hints)';
+
+                btn.innerHTML = `<strong>${m}</strong> <span style="opacity:0.7;font-size:10px">${subtext}</span>`;
+
+                btn.onclick = () => {
+                    state.mode = m;
+                    state.competencySelected = true;
+                    saveState(state);
+                    renderOverlay();
+                };
+                body.appendChild(btn);
+            });
+            return;
+        }
+
+        // 2. Main Challenge Screen
+
+        // Header: Current Mode + Change Button
+        const headerRow = document.createElement('div');
+        headerRow.style.display = 'flex';
+        headerRow.style.justifyContent = 'space-between';
+        headerRow.style.alignItems = 'center';
+        headerRow.style.marginBottom = '8px';
+
+        const modeBadge = document.createElement('span');
+        modeBadge.textContent = `Mode: ${state.mode}`;
+        modeBadge.style.fontSize = '11px';
+        modeBadge.style.fontWeight = 'bold';
+        modeBadge.style.opacity = '0.9';
+        headerRow.appendChild(modeBadge);
+
+        const changeBtn = document.createElement('button');
+        changeBtn.textContent = 'Change';
+        changeBtn.style.width = 'auto';
+        changeBtn.style.fontSize = '10px';
+        changeBtn.style.padding = '2px 6px';
+        changeBtn.style.margin = '0';
+        changeBtn.onclick = () => {
+            if (confirm("Changing competency level will refresh the allowable hints. Continue?")) {
+                state.competencySelected = false;
+                saveState(state);
+                renderOverlay();
+            }
+        };
+        headerRow.appendChild(changeBtn);
+        body.appendChild(headerRow);
+
 
         // Challenge selector
         const chLabel = document.createElement('label');
         chLabel.textContent = 'Challenge:';
-        chLabel.style.marginTop = '4px';
         body.appendChild(chLabel);
 
         const select = document.createElement('select');
@@ -222,6 +310,60 @@
         if (challenges.length > 0) {
             renderChallengeSection(select.value || challenges[0].key);
         }
+
+        // Trainer History Section
+        if (state.mode === 'Trainer') {
+            const historyHeader = document.createElement('div');
+            historyHeader.style.marginTop = '16px';
+            historyHeader.style.borderTop = '1px solid #ccc';
+            historyHeader.style.paddingTop = '8px';
+            historyHeader.style.fontWeight = 'bold';
+            historyHeader.textContent = 'Trainer History';
+            body.appendChild(historyHeader);
+
+            const historyContainer = document.createElement('div');
+            historyContainer.style.fontSize = '11px';
+            historyContainer.style.maxHeight = '150px'; // Prevent it from taking too much space
+            historyContainer.style.overflowY = 'auto';
+            body.appendChild(historyContainer);
+
+            renderHistory(historyContainer);
+        }
+    }
+
+    function renderHistory(section) {
+        const entries = Object.entries(state.challengeState);
+        if (!entries.length) {
+            section.textContent = 'No history yet.';
+            return;
+        }
+        // Filter out empty state entries if any
+        const validEntries = entries.filter(([_, info]) => info.maxHintSeen > 0 || info.notes);
+
+        if (!validEntries.length) {
+            section.textContent = 'No hints or notes recorded yet.';
+            return;
+        }
+
+        validEntries.forEach(([key, info]) => {
+            const ch = challenges.find(c => c.key === key);
+            const name = ch ? ch.name : key;
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+            div.style.paddingBottom = '4px';
+            div.style.borderBottom = '1px dotted #eee';
+
+            const noteSnippet = info.notes ? (info.notes.slice(0, 50) + (info.notes.length > 50 ? '...' : '')) : '(none)';
+
+            div.innerHTML = `
+                <div style="font-weight:600">${name}</div>
+                <div style="padding-left: 8px;">
+                    <div>Hints used: ${info.maxHintSeen}</div>
+                    <div style="color:#666; font-style:italic">"${noteSnippet}"</div>
+                </div>
+            `;
+            section.appendChild(div);
+        });
     }
 
     function renderChallengeSection(chKey) {
@@ -276,11 +418,19 @@
 
             function renderHintsList() {
                 hintContainer.innerHTML = '';
-                if (chState.maxHintSeen === 0) {
-                    hintContainer.textContent = 'No hints shown yet.';
+
+                // Effective limit is min(maxSeen, maxAllowedForMode)
+                const visibleCount = Math.min(chState.maxHintSeen, maxLevel);
+
+                if (visibleCount === 0) {
+                    if (maxLevel === 0) {
+                        hintContainer.innerHTML = '<em>Hints disabled in Trainer mode.</em>';
+                    } else {
+                        hintContainer.textContent = 'No hints shown yet.';
+                    }
                     return;
                 }
-                for (let i = 0; i < chState.maxHintSeen; i++) {
+                for (let i = 0; i < visibleCount; i++) {
                     const p = document.createElement('p');
                     p.innerHTML = `<strong>Hint ${i + 1}:</strong> ${hintData.hints[i]}`;
                     hintContainer.appendChild(p);
@@ -289,13 +439,27 @@
 
             const btn = document.createElement('button');
             btn.textContent = 'Show next hint';
+
+            // Disable button if reached max level for this mode
+            if (maxLevel === 0) {
+                btn.disabled = true;
+                btn.textContent = 'No hints in Trainer Mode';
+            } else if (chState.maxHintSeen >= maxLevel) {
+                btn.disabled = true;
+                btn.textContent = 'Max hints reached';
+            }
+
             btn.addEventListener('click', () => {
                 if (chState.maxHintSeen < maxLevel) {
                     chState.maxHintSeen += 1;
                     saveState(state);
                     renderHintsList();
-                } else if (state.mode === 'Beginner') {
-                    alert('Max hint level reached in Beginner mode. Switch to Explorer for more.');
+
+                    // Re-check button state
+                    if (chState.maxHintSeen >= maxLevel) {
+                        btn.disabled = true;
+                        btn.textContent = 'Max hints reached';
+                    }
                 }
             });
             section.appendChild(btn);
@@ -341,6 +505,35 @@
                     body.textContent = 'Error loading /api/Challenges. Is Juice Shop running?';
                 }
             });
+
+        // Global listener for "Delete cookie..." button in Juice Shop
+        // We use { capture: true } to ensure we catch the event before Angular or other frameworks might stop propagation.
+        document.body.addEventListener('click', (e) => {
+            // Traverse up to find the button if a child (like a span/icon) was clicked
+            const target = e.target;
+            // The button text is "Delete cookie to clear hacking progress"
+            // We'll check the target or its closest button parent.
+            const btn = target.closest ? target.closest('button') : target;
+
+            // Check text of the element or the found button
+            const textToCheck = (btn ? btn.textContent : target.textContent) || '';
+
+            if (textToCheck.includes('Delete cookie to clear hacking progress')) {
+                // User clicked the reset button.
+                console.log('Juice Shop Coach: Resetting extension state due to main app reset.');
+
+                // Reset internal notes/history
+                state.challengeState = {};
+
+                // Also reset the 'solved' status for all loaded challenges so the UI (checkmarks) updates immediately
+                challenges.forEach(c => c.solved = false);
+
+                saveState(state);
+
+                // Update UI if overlay is open
+                renderOverlay();
+            }
+        }, { capture: true });
     }
 
     if (document.readyState === 'loading') {
@@ -350,3 +543,4 @@
     }
 
 })();
+

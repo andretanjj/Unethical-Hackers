@@ -26,6 +26,38 @@
     max-height: 100vh;
 }
 
+/* Minimized State (Circle) */
+#js-overlay.js-minimized {
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: 50%;
+    overflow: hidden;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #ff9800;
+    /* Juice Shop Orange */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    border: 3px solid white;
+}
+
+/* Hide internal elements when minimized */
+#js-overlay.js-minimized #js-overlay-header,
+#js-overlay.js-minimized #js-overlay-body {
+    display: none;
+}
+
+/* Show a specific icon when minimized */
+#js-overlay.js-minimized::after {
+    content: "🥤";
+    /* Juice Cup Icon */
+    font-size: 30px;
+}
+
 #js-overlay-header {
     padding: 8px 12px;
     font-weight: 600;
