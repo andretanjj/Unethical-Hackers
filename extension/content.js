@@ -11,22 +11,55 @@
     // Keys MUST match challenge.key from /api/Challenges
     const HINTS = {
         "scoreBoardChallenge": {
-            learning_goal: "Discover hidden functionality in a single-page app.",
             hints: [
-                "What parts of the app might be hidden from normal navigation?",
-                "Can you find any routes or components related to 'score' or 'board' in the HTML or JS?",
-                "Is there any element that is hidden (e.g. via CSS or toggled via JavaScript) that reveals extra pages?"
+                "Play around with the tabs in the side menu (three lines) & observe how the url in the browser search bar changes.",
+                "Now, guess the url of the hidden score board tab.",
+                "Try using localhost:3000/#/score-board."
             ]
         },
-        "domXssChallenge": {
-            learning_goal: "Understand how user input in the URL can affect the DOM directly.",
+        "localXssChallenge": {
             hints: [
-                "Where does the page read from the URL and display it without a full reload?",
-                "Try modifying query string parameters and see what part of the page changes.",
-                "Look for JavaScript that takes values from location or query parameters and uses innerHTML or similar sinks."
+                "Look for any place where you can type something in.",
+                "Test out all possible places where what you type in will appear in the browser search bar.",
+                "Paste the given code into the place."
+            ]
+        },
+        "xssBonusChallenge": {
+            hints: [
+                "First, solve the 'DOM XSS' challenge. Then, do the exact same with the new given code!"
+            ]
+        },
+        "privacyPolicyChallenge": {
+            hints: [
+                "Where would privacy policy be located?",
+                "Login into your account.",
+                "Click on your account & click on the Privacy & Security."
+            ]
+        },
+        "bullyChatbotChallenge": {
+            hints: [
+                "Access the support chat in the side menu (three lines)",
+                "Try to ask for a coupon code (can be creative in asking!)",
+                "Keep asking until you get it (seriously.)"
+            ]
+        },
+        "directoryListingChallenge": {
+            hints: [
+                "Play around with the tabs in the side menu, look for any links that direct you to a new webpage.",
+                "The link is specifically inside 'About Us'.",
+                "After entering the new webpage, play around with the url.",
+                "Try to delete the legal.md in the URL in the browser search bar.",
+                "Do you now see a bunch of files? Tap into any other file that seems confidential.",
+                "Fine. Click on acquisitions.md."
+            ]
+        },
+        "errorHandlingChallenge": {
+            hints: [
+                "Complete 'Confidential Document' first. (You may have solved this by then).",
+                "Else, try to access other files based on the last step of 'Confidential Document'",
+                "Fine. Click on coupons_2013.md.bak."
             ]
         }
-        // add more challenges as needed
     };
 
     // ---------- STATE MANAGEMENT (localStorage) ----------
