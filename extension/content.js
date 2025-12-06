@@ -143,6 +143,78 @@
         renderOverlay();
     }
 
+    function computeRecommendedChallenge(challenges, state) {
+        if (!challenges || !challenges.length) return null;
+
+        const categoryStats = {};
+
+        challenges.forEach(c => {
+            const cat = c.category || 'Other';
+            const chState = state.challengeState[c.key] || { maxHintSeen: 0, notes: '' };
+
+            if (!categoryStats[cat]) {
+                categoryStats[cat] = { totalHintsUsed: 0, solvedCount: 0, challenges: [] };
+            }
+
+            categoryStats[cat].totalHintsUsed += chState.maxHintSeen || 0;
+            if (c.solved) categoryStats[cat].solvedCount += 1;
+            categoryStats[cat].challenges.push(c);
+        });
+
+        // Find weakest category with at least one unsolved challenge
+        let weakestCategory = null;
+        let weakestScore = -Infinity;
+
+        Object.entries(categoryStats).forEach(([cat, stats]) => {
+            const hasUnsolved = stats.challenges.some(ch => !ch.solved);
+            if (!hasUnsolved) return;
+
+            const score = (stats.totalHintsUsed + 1) / (stats.solvedCount + 1);
+            if (score > weakestScore) {
+                weakestScore = score;
+                weakestCategory = cat;
+            }
+        });
+
+        let candidates = [];
+
+        if (weakestCategory) {
+            candidates = categoryStats[weakestCategory].challenges.filter(ch => !ch.solved);
+        } else {
+            // fallback: easiest unsolved overall
+            candidates = challenges.filter(ch => !ch.solved);
+        }
+
+        if (!candidates.length) return null;
+
+        candidates.sort((a, b) => {
+            if (a.difficulty !== b.difficulty) return a.difficulty - b.difficulty;
+            return a.name.localeCompare(b.name);
+        });
+
+        return candidates[0];
+    }
+
+    function exportCoachData() {
+        const data = {
+            challengeState: state.challengeState || {}
+        };
+
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'juice-shop-coach-notes.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+
+
     // ---------- HINT LIMIT PER MODE ----------
 
     function maxHintLevelForMode(mode, numHints) {
@@ -352,6 +424,30 @@
         headerRow.appendChild(changeBtn);
         body.appendChild(headerRow);
 
+        // Recommended Challenge
+        if (challenges.length > 0) {
+            const recommended = computeRecommendedChallenge(challenges, state);
+            if (recommended) {
+                const recBox = document.createElement('div');
+                recBox.style.marginBottom = '8px';
+                recBox.style.padding = '6px';
+                recBox.style.border = '1px solid #444';
+                recBox.style.borderRadius = '4px';
+                recBox.style.background = 'rgba(255, 255, 255, 0.02)';
+                recBox.style.fontSize = '11px';
+
+                recBox.innerHTML = `
+                    <div style="font-weight:600; margin-bottom:2px;">Recommended next challenge</div>
+                    <div>${recommended.name}</div>
+                    <div style="opacity:0.8;">
+                        Category: ${recommended.category} | Difficulty: ${recommended.difficulty}★
+                    </div>
+                `;
+
+                body.appendChild(recBox);
+            }
+        }
+
 
         // Challenge selector
         const chLabel = document.createElement('label');
@@ -428,6 +524,21 @@
             body.appendChild(historyContainer);
 
             renderHistory(historyContainer);
+
+            // Export Section
+            const exportHeader = document.createElement('div');
+            exportHeader.style.marginTop = '8px';
+            exportHeader.style.fontWeight = '600';
+            exportHeader.textContent = 'Export Data';
+            body.appendChild(exportHeader);
+
+            const exportBtn = document.createElement('button');
+            exportBtn.textContent = 'Export JSON';
+            exportBtn.style.fontSize = '10px';
+            exportBtn.style.width = '100%';
+            exportBtn.style.marginTop = '4px';
+            exportBtn.onclick = exportCoachData;
+            body.appendChild(exportBtn);
         }
     }
 
@@ -506,7 +617,6 @@
             const learning = document.createElement('div');
             learning.style.fontSize = '12px';
             learning.style.marginBottom = '4px';
-            learning.textContent = 'Goal: ' + (hintData.learning_goal || 'n/a');
             section.appendChild(learning);
 
             const totalHints = hintData.hints.length;
