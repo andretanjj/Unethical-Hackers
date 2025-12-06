@@ -6,6 +6,8 @@
 
     const STATE_KEY = 'jsCompanionState_v1';
     const MODES = ['Beginner', 'Explorer', 'Trainer'];
+    const USER_ID_KEY = 'jsCompanionUserId_v1';
+    const BACKEND_URL = 'http://127.0.0.1:5001'; // backend used only for clearing coach history
 
     // Minimal hint pack; expand with more challenges later.
     // Keys MUST match challenge.key from /api/Challenges
@@ -98,6 +100,47 @@
             state.challengeState[chKey] = { maxHintSeen: 0, notes: '' };
         }
         return state.challengeState[chKey];
+    }
+
+    // ---------- BACKEND & USER ID HELPERS ----------
+
+    function getUserId() {
+        let id = localStorage.getItem(USER_ID_KEY);
+        if (!id) {
+            id = 'user-' + Math.random().toString(36).slice(2, 10);
+            localStorage.setItem(USER_ID_KEY, id);
+        }
+        return id;
+    }
+
+    const USER_ID = getUserId();
+
+    function backendClearStateForUser(userId) {
+        // Best-effort fire-and-forget call; ignore failures in UI
+        if (!BACKEND_URL) return;
+        fetch(`${BACKEND_URL}/api/state/reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        }).catch(err => {
+            console.error('Backend clear state failed', err);
+        });
+    }
+
+    function resetCoachHistory() {
+        if (!confirm('This will clear all hints used and notes for this coach on this browser. Continue?')) {
+            return;
+        }
+
+        // Clear local challengeState only; keep mode/competency settings
+        state.challengeState = {};
+        saveState(state);
+
+        // Best-effort backend reset
+        backendClearStateForUser(USER_ID);
+
+        // Re-render UI to reflect cleared history
+        renderOverlay();
     }
 
     // ---------- HINT LIMIT PER MODE ----------
@@ -353,6 +396,30 @@
             historyHeader.style.fontWeight = 'bold';
             historyHeader.textContent = 'Trainer History';
             body.appendChild(historyHeader);
+
+            // Coach ID + reset button row
+            const trainerInfoRow = document.createElement('div');
+            trainerInfoRow.style.display = 'flex';
+            trainerInfoRow.style.justifyContent = 'space-between';
+            trainerInfoRow.style.alignItems = 'center';
+            trainerInfoRow.style.marginBottom = '4px';
+
+            const coachIdSpan = document.createElement('span');
+            coachIdSpan.style.fontSize = '10px';
+            coachIdSpan.style.opacity = '0.8';
+            coachIdSpan.textContent = `Your coach ID: ${USER_ID}`;
+            trainerInfoRow.appendChild(coachIdSpan);
+
+            const resetBtn = document.createElement('button');
+            resetBtn.textContent = 'Reset coach history';
+            resetBtn.style.width = 'auto';
+            resetBtn.style.fontSize = '10px';
+            resetBtn.style.padding = '2px 6px';
+            resetBtn.style.marginLeft = '8px';
+            resetBtn.onclick = resetCoachHistory;
+            trainerInfoRow.appendChild(resetBtn);
+
+            body.appendChild(trainerInfoRow);
 
             const historyContainer = document.createElement('div');
             historyContainer.style.fontSize = '11px';
