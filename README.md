@@ -32,13 +32,14 @@ Planned extensions beyond this hackathon:
 - **Backend sync & dashboards**  
   - Store coach data server-side by an anonymous “coach ID”  
   - Multi-device continuity and instructor dashboards for cohorts
-- **Security taxonomy & skills reporting**  
-  - Tag challenges with OWASP Top 10 / CWE IDs  
+- **Security skills reporting**  
   - Aggregate stats like “XSS: 3 solved, avg 2 hints; Access Control: 1 solved, avg 4 hints”
 - **Richer export / reports**  
   - Human-readable learning reports (PDF/HTML) summarising progress and weak areas
 - **Deeper tool usage prompts**  
   - More hints that explicitly guide learners to use DevTools, Burp Suite, etc., mirroring real-world workflows
+- **More interactive experience**
+  - Our extension will be able to track user's real-time progress & provide more helpful hints (now that users already know which part of the page they are at)
 
 ---
 
