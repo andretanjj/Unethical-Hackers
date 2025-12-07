@@ -111,12 +111,12 @@ _This gently nudges you toward areas where you need more practice, instead of ju
 
 ### Trainer History View
 When you’re in Trainer mode, the panel shows a Trainer History section:
-    - A list of challenges where you used hints or wrote notes.
+- A list of challenges where you used hints or wrote notes.
     For each challenge:
-        - Name
-        - Number of hints used
-        - A short snippet of your notes
-    - There is also:
-        - A Coach ID _(an anonymous ID like user-abc123)_ to identify this learner.
-        - A Reset coach history button that clears all hints used and notes for the current browser.
-        - An Export JSON button
+    - Name
+    - Number of hints used
+    - A short snippet of your notes
+- There are also:
+    - A Coach ID _(an anonymous ID like user-abc123)_ to identify this learner.
+    - A Reset coach history button that clears all hints used and notes for the current browser.
+    - An Export JSON button
